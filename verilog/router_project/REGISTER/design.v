@@ -6,23 +6,23 @@ output reg err,parity_done,low_pkt_valid);
 reg [7:0]header,fifo_full_state,int_parity,pkt_parity_byte;
 always@(posedge clk)
 begin if(!rst)
-parity_done<=1'b0;
+parity_done<=0;
 else begin
 if((ld_state &&!fifo_full&&!pkt_valid)||(laf_state&&low_pkt_valid&&!parity_done))
 parity_done<=1'b1;
 else if(detect_add)
-parity_done<=1'b0;
+parity_done<=0;
 end
 end
 //low_pkt_valid
 always@(posedge clk)
 begin
 if(!rst)
-low_pkt_valid<=1'b0;
+low_pkt_valid<=0;
 else if(rst_int_reg)
-low_pkt_valid<=1'b0;
+low_pkt_valid<=0;
 else if(ld_state&&!pkt_valid)
-low_pkt_valid<=1'b1;
+low_pkt_valid<=1;
 end
 always@(posedge clk)
 begin if(!rst)
@@ -31,7 +31,7 @@ dout<=0;
 header<=0;
 fifo_full_state<=0;
 end
-else if(detect_add&& pkt_valid)
+  else if(detect_add&& pkt_valid&&d_in[1:0]!=2'b11)
 header<=d_in;
 else if(lfd_state)
 dout<=header;
@@ -44,28 +44,33 @@ dout<=fifo_full_state;
 end
 always@(posedge clk)
 begin if(!rst)
-int_parity<=8'b0;
-else if(lfd_state)
+int_parity<=0;
+else if(detect_add)
+int_parity<=0;
+  else if(lfd_state&&pkt_valid)
 int_parity<=int_parity^header;
 else if(ld_state&&pkt_valid&&!full_state)
 int_parity<=int_parity^d_in;
-else if(laf_state)
-int_parity<=int_parity^fifo_full_state;
+else
+int_parity<=int_parity;
 end
 always@(posedge clk)
 begin if(!rst)
 err<=1'b0;
-else if(parity_done)
-if(int_parity!=pkt_parity_byte)
+  else if(parity_done) begin
+if(int_parity==pkt_parity_byte)
 err<=0;
 else
 err<=1;
+end
 else err<=0;
 end
 always@(posedge clk)
 begin if(!rst)
-pkt_parity_byte<=8'b0;
-else if((ld_state&&!pkt_valid))
+pkt_parity_byte<=0;
+else if(detect_add)
+pkt_parity_byte<=0;   
+else if((ld_state&&!pkt_valid&&!fifo_full)||(laf_state&&!parity_done&&low_pkt_valid))
 pkt_parity_byte<=d_in;
 end
 endmodule
