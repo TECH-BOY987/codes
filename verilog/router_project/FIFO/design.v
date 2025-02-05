@@ -5,38 +5,15 @@ output reg [7:0] dout,
 output reg full,empty);
 reg [8:0]fifo_mem[15:0];
 reg [3:0] wr_ptr,rd_ptr;
-reg[5:0]count_len;
-reg [4:0]count;
+reg [6:0]count;
 reg lfd_state_t;
 integer i;
 always@(posedge clk)
 begin
 if(!rst)
-lfd_state_t<=1'b0;
+lfd_state_t<=0;
 else
 lfd_state_t<= lfd_state;
-end
-//size
-always@(count)
-begin
-empty<=(count==4'b0000);
-full<=(count==4'b1111);
-end
-//counter
-always@(posedge clk)
-begin
-if(!rst)begin
-dout<=8'd0;
-count<=4'd0;
-end
-else if((!full&&wr_en)&&(!empty&&rd_en))
-count<=count;
-else if(!full&&wr_en)
-count<=count+1;
-else if(!empty&&rd_en)
-count<=count-1;
-else
-count<=count;
 end
 //fifo_read
 always@(posedge clk)
@@ -48,7 +25,7 @@ dout<=8'bz;
 else if(count==0)
 dout<=8'bz;
 else if(rd_en&&!empty)
-dout<=fifo_mem[rd_ptr[3:0]];
+ dout<=fifo_mem[rd_ptr[3:0]][7:0];
 end
 //fifo_write
 always @(posedge clk) begin
@@ -56,33 +33,40 @@ if (!rst||soft_rst) begin
 for(i=0;i<16;i=i+1)
 fifo_mem[i]<=0;
 end
-else if (wr_en && !full) begin
-fifo_mem[wr_ptr[3:0]][8]<=lfd_state_t;
+ else if (wr_en && !full) begin
+  if(lfd_state_t) begin
+   fifo_mem[wr_ptr[3:0]][8]<=1'b1;
 fifo_mem[wr_ptr[3:0]][7:0]<=d_in;
+  end
+  else begin
+   fifo_mem[wr_ptr[3:0]][8]<=1'b0;
+fifo_mem[wr_ptr[3:0]][7:0]<=d_in;
+  end
 end
 end
 //rd_ptr and wr_ptr
 always@(posedge clk) begin
-if(!rst||soft_rst) begin
-wr_ptr<=4'b0;
-rd_ptr<=4'b0;
-end
-else begin
+if(!rst)
+wr_ptr<=0;
+else
 if(wr_en&&!full)
 wr_ptr<=wr_ptr+1;
+end
+always@(posedge clk) begin
+if(!rst) begin
+rd_ptr<=0;
+end
 else
-wr_ptr<=wr_ptr;
 if(rd_en&&!empty)
 rd_ptr<=rd_ptr+1;
-else
-rd_ptr<=rd_ptr;
-end
-end
 //payload_length
 always @(posedge clk) begin
-if(fifo_mem[rd_ptr[3:0]][8])
-count<=fifo_mem[rd_ptr[3:0]][7:2]+1'b1;
- if(count_len!=0)
-count_len<=count_len-1'b1;
+ if(rd_en&&!empty) begin
+  if(fifo_mem[rd_ptr[3:0]][8]==1'b1)
+   count<=fifo_mem[rd_ptr[3:0]][7:2]+1'b1;
+ if(count!=0)
+count<=count-1;
 end
+assign full=(wr_ptr=={~rd_ptr[4],rd_ptr[3:0]})
+assign empty=(rd_ptr==wr_ptr);
 endmodule
