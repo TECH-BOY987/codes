@@ -2,9 +2,9 @@ module fifo_router(
 input clk,rst,soft_rst,wr_en,rd_en,lfd_state,
 input [7:0] d_in,
 output reg [7:0] dout,
-output reg full,empty);
+output full,empty);
 reg [8:0]fifo_mem[15:0];
-reg [3:0] wr_ptr,rd_ptr;
+reg [4:0] wr_ptr,rd_ptr;
 reg [6:0]count;
 reg lfd_state_t;
 integer i;
@@ -61,12 +61,13 @@ if(rd_en&&!empty)
 rd_ptr<=rd_ptr+1;
 //payload_length
 always @(posedge clk) begin
- if(rd_en&&!empty) begin
-  if(fifo_mem[rd_ptr[3:0]][8]==1'b1)
-   count<=fifo_mem[rd_ptr[3:0]][7:2]+1'b1;
- if(count!=0)
+if(rd_en&&!empty) begin
+if(fifo_mem[rd_ptr[3:0]][8]==1'b1)
+count<=fifo_mem[rd_ptr[3:0]][7:2]+1'b1;
+else if(count!=0)
 count<=count-1;
 end
-assign full=(wr_ptr=={~rd_ptr[4],rd_ptr[3:0]})
+end
+assign full=(wr_ptr=={~rd_ptr[4],rd_ptr[3:0]});
 assign empty=(rd_ptr==wr_ptr);
 endmodule
