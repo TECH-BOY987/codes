@@ -10,4 +10,4 @@ endmodule
 
 """output"""
 
-# KERNEL: UVM_INFO /home/runner/testbench.sv(7) @ 0: reporter [tb_top] hello world
+# KERNEL: UVM_INFO /home/runner/testbench.sv(7) @ 0: reporter [tb_top] hello world 
