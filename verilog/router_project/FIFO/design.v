@@ -59,6 +59,7 @@ end
 else
 if(rd_en&&!empty)
 rd_ptr<=rd_ptr+1;
+end
 //payload_length
 always @(posedge clk) begin
 if(rd_en&&!empty) begin
