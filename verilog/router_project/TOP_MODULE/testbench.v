@@ -1,209 +1,105 @@
-module top_module_tb();
-reg clk,rst,pkt_valid,rd_en_0,rd_en_1,rd_en_2;
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 13.02.2025 21:50:38
+// Design Name: 
+// Module Name: router_topmodule_tb
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module router_topmodule_tb();
+reg clk=0,rst,pkt_valid,rd_en_0,rd_en_1,rd_en_2;
 reg [7:0]d_in;
 wire vld_out_0,vld_out_1,vld_out_2,err,busy;
 wire [7:0]dout_0,dout_1,dout_2;
 integer i;
-top_module dut(.clk(clk),.rst(rst),.pkt_valid(pkt_valid),.rd_en_0(rd_en_0),.rd_en_1(rd_en_1),.rd_en_2(rd_en_2),.d_in(d_in),
+router_topmodule dut(.clk(clk),.rst(rst),.pkt_valid(pkt_valid),.rd_en_0(rd_en_0),.rd_en_1(rd_en_1),.rd_en_2(rd_en_2),.d_in(d_in),
 .vld_out_0(vld_out_0),.vld_out_1(vld_out_1),.vld_out_2(vld_out_2),.err(err),.busy(busy),.dout_0(dout_0),.dout_1(dout_1),.dout_2(dout_2));
 always #5 clk=~clk;
 task pktm_gen_5;
-			reg [7:0]header, payload_data, parity;
-			reg [5:0]payloadlen;
+            input [6:0] payloadlen;
+            input read;
+            input simread;
+            input [1:0] addr;
+            input [7:0] ext_parity;
+			reg [7:0]header, payload_data; 
+			reg [7:0]parity;
 			begin
 				parity=0;
 				wait(!busy)
 				begin
-				@(negedge clk)
-				payloadlen=5;
-				pkt_valid=1'b1;
-				header={payloadlen,2'b00};
+				@(negedge clk);
+				pkt_valid=1;
+				header={payloadlen,addr};
 				d_in=header;
 				parity=parity^d_in;
 				end
-				@(negedge clk)
+				@(negedge clk);
 							
 				for(i=0;i<=payloadlen;i=i+1)
 					begin
-					wait(!busy)
-					@(negedge clk)
-					payload_data=$random%8;
+					wait(!busy) begin
+					@(negedge clk);
+					payload_data={$random}%256;
 					d_in=payload_data;
 					parity=parity^d_in; 
 					end					
-								
-              wait(!busy)
+					if(read&&simread&&i==5) begin
+					rd_en_0=(addr==0);
+					rd_en_1=(addr==1);
+					rd_en_2=(addr==2);
+					end
+					end			
+              wait(!busy) begin
 					@(negedge clk)
-					pkt_valid=1'b0;				
-					d_in=parity;
-              repeat(5)
-			@(negedge clk)
-			rd_en_0=1'b1;
-			wait(dut.f0.empty);
-			rd_en_0=0;
-              end
-endtask
-task pktm_gen_7;
-			reg [7:0]header, payload_data, parity;
-			reg [5:0]payloadlen;
-			begin
-				parity=0;
-				wait(!busy)
-				begin
-				@(negedge clk)
-				payloadlen=7;
-				pkt_valid=1'b1;
-				header={payloadlen,2'b00};
-				d_in=header;
-				parity=parity^d_in;
-				end
-				@(negedge clk)
-							
-				for(i=0;i<=payloadlen;i=i+1)
-					begin
-					wait(!busy)
-					@(negedge clk)
-					payload_data=$random%8;
-					d_in=payload_data;
-					parity=parity^d_in; 
-					end					
-								
-              wait(!busy)
-					@(negedge clk)
-					pkt_valid=1'b0;				
-					d_in=parity;
-              repeat(5)
-			@(negedge clk)
-			rd_en_0=1'b1;
-			wait(dut.f0.empty);
-			rd_en_0=0;
-              end
-              endtask
- task pktm_gen_8;
-			reg [7:0]header, payload_data, parity;
-			reg [5:0]payloadlen;
-			begin
-				parity=0;
-				wait(!busy)
-				begin
-				@(negedge clk)
-				payloadlen=8;
-				pkt_valid=1'b1;
-				header={payloadlen,2'b01};
-				d_in=header;
-				parity=parity^d_in;
-				end
-				@(negedge clk)
-							
-				for(i=0;i<=payloadlen;i=i+1)
-					begin
-					wait(!busy)
-					@(negedge clk)
-					payload_data=$random%8;
-					d_in=payload_data;
-					parity=parity^d_in; 
-					end					
-								
-              wait(!busy)
-					@(negedge clk)
-					pkt_valid=1'b0;				
-					d_in=parity;
-              repeat(5)
-			@(negedge clk)
-			rd_en_1=1'b1;
-			wait(dut.f1.empty);
-			rd_en_1=0;
-              end
-endtask
-task pktm_gen_16;
-			reg [7:0]header, payload_data, parity;
-			reg [5:0]payloadlen;
-			begin
-				parity=0;
-				wait(!busy)
-				begin
-				@(negedge clk)
-				payloadlen=4;
-				pkt_valid=1'b1;
-				header={payloadlen,2'b10};
-				d_in=header;
-				parity=parity^d_in;
-				end
-				@(negedge clk)
-							
-				for(i=0;i<=payloadlen;i=i+1)
-					begin
-					wait(!busy)
-					@(negedge clk)
-					payload_data=$random%8;
-					d_in=payload_data;
-					parity=parity^d_in; 
-					end					
-								
-              wait(!busy)
-					@(negedge clk)
-					pkt_valid=1'b0;				
-					d_in=parity;
-              repeat(4)
-			@(negedge clk)
-			rd_en_2=1'b1;
-			wait(dut.f2.empty);
-			rd_en_2=0;
-              end
-              endtask
-              task pktm_gen_6;
-			reg [7:0]header, payload_data, parity;
-			reg [5:0]payloadlen;
-			begin
-				parity=0;
-				wait(!busy)
-				begin
-				@(negedge clk)
-				payloadlen=6;
-				pkt_valid=1'b1;
-				header={payloadlen,2'b10};
-				d_in=header;
-				parity=parity^d_in;
-				end
-				@(negedge clk)
-							
-				for(i=0;i<=payloadlen;i=i+1)
-					begin
-					wait(!busy)
-					@(negedge clk)
-					payload_data=$random%8;
-					d_in=payload_data;
-					parity=parity^d_in; 
-					end					
-								
-              wait(!busy)
-					@(negedge clk)
-					pkt_valid=1'b0;				
-					d_in=parity;
-              repeat(5)
-			@(negedge clk)
-			rd_en_2=1'b1;
-			wait(dut.f2.empty);
-			rd_en_2=0;
-              end
+					pkt_valid=0;				
+					d_in=(ext_parity==0)?parity:ext_parity;
+					end
+					if(read) begin
+					@(negedge clk);
+					@(negedge clk);
+					if(addr==0) begin
+					rd_en_0=simread? rd_en_0:1;
+					wait(dut.f0.empty);
+					rd_en_0=0;
+					end else if(addr==1) begin
+					rd_en_1=simread? rd_en_1:1;
+					wait(dut.f1.empty);
+					rd_en_1=0;
+					end else if(addr==2) begin
+					rd_en_2=simread? rd_en_2:1;
+					wait(dut.f2.empty);
+					rd_en_2=0;
+					end
+					end
+					end
+             
 endtask
 initial
 		begin
-		clk=1'b0;
-		rst=1'b0;
-		pkt_valid=1'b0;
-		rd_en_0=1'b0;
-		rd_en_1=1'b0;
-		rd_en_2=1'b0;
-		d_in=8'b0;
-		#20;
-		rst=1'b1;
+		pkt_valid=0;
+		rd_en_0=0;
+		rd_en_1=0;
+		rd_en_2=0;
+		d_in=0;
+		rst=0;
 		#10;
-			pktm_gen_5;
-			pktm_gen_7;
-			pktm_gen_8;
-			pktm_gen_16;
-			pktm_gen_6;
-			#200;
+		rst=1;
+		#20 pktm_gen_5(6'd8,1,0,2'b0,0);
+		#20; rst=0;#10; rst=1;		
+		#30; pktm_gen_5(6'd20,1,1,2'b0,0);
 		end			
 endmodule

@@ -1,3 +1,25 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 13.02.2025 21:49:22
+// Design Name: 
+// Module Name: router_fsm_tb
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
 module router_fsm_tb();
 reg clk=0,rst,soft_rst_0,soft_rst_1,soft_rst_2,pkt_valid,fifo_full,fifo_empty_0,fifo_empty_1,fifo_empty_2,parity_done,low_pkt_valid;
 reg [1:0]d_in;
@@ -39,8 +61,8 @@ endtask
 task t2;
 begin
 pkt_valid=1'b1;
-fifo_empty_0=1'b1;
-d_in=2'b00;
+fifo_empty_0=1'b0;
+d_in=2'b01;
 #10;
 fifo_full=1;
 pkt_valid=0;
@@ -52,7 +74,7 @@ task t3;
 begin
 pkt_valid=1'b1;
 fifo_empty_0=1'b1;
-d_in=2'b00;
+d_in=2'b10;
 #10;
 fifo_full=0;
 pkt_valid=0;
@@ -69,7 +91,7 @@ t1;
 t2;
 #30;
 t3;
-#30;
 $finish;
+#30;
 end
 endmodule

@@ -1,3 +1,25 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 13.02.2025 21:49:46
+// Design Name: 
+// Module Name: router_register_tb
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
 module router_register_tb();
 reg clk=0,rst,pkt_valid=0,fifo_full=0,detect_add=0,ld_state=0,laf_state=0,full_state=0,lfd_state=0,rst_int_reg=0;
 reg [7:0]d_in;
@@ -19,8 +41,8 @@ endtask
 task packet1();
 begin
 #10;
-detect_add=1'b1;
 pkt_valid=1'b1;
+detect_add=1'b1;
 header=8'b00010101;
 parity=parity^header;
 d_in=header;
@@ -50,9 +72,8 @@ endtask
 task packet2();
 begin
 #10;
-parity=0;
-detect_add=1'b1;
 pkt_valid=1'b1;
+detect_add=1'b1;
 header=8'b00010101;
 parity=parity^header;
 d_in=header;
@@ -73,7 +94,7 @@ parity=parity^d_in;
 end
 #10;
 pkt_valid=0;
-d_in=8'd48;
+d_in=8'd46;
 #10;
 ld_state=0;
 #20;
@@ -84,8 +105,6 @@ begin
 reset;
 #20;
 packet1();
-#20;
 packet2();
-$finish;
 end
 endmodule
