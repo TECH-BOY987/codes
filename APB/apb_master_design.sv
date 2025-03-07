@@ -89,6 +89,7 @@ begin
     rst=0;
     #5; rst=1;
 end
+endtask
 task write();
 begin
 @(posedge clk);
