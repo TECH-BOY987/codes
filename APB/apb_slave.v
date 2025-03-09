@@ -1,8 +1,8 @@
 module apb_slave (
 	input pclk,
-	input presetn,
+	input prst,
 	input psel,
-	input penable,
+	input pen,
 	input pwrite,
 	input [31:0] paddr,
 	input [31:0] pwdata,
@@ -14,13 +14,13 @@ module apb_slave (
 	reg [31:0] memory [0:15];
 
 	always @(posedge pclk)begin
-		if (~presetn)begin
+		if (~prst)begin
 			prdata <= 32'b0;
 			pready <= 1'b0;
 			pslverr <= 1'b0;
 		end
 		else begin
-			if (psel && penable)begin
+			if (psel && pen)begin
 				if (pwrite) begin
 					//write operation
 					memory[paddr] <= pwdata;

@@ -2,9 +2,9 @@
 `include "apb_slave.v"
 module apb_tb;
 	reg pclk;
-	reg presetn;
+	reg prst;
 	wire psel;
-	wire penable;
+	wire pen;
 	reg pwrite;
 	reg [31:0] paddr;
 	reg [31:0] pwdata;
@@ -14,9 +14,9 @@ module apb_tb;
 
 	apb_master uut_master(
 		.pclk(pclk),
-		.presetn(presetn),
+		.presetn(prst),
 		.psel(psel),
-		.penable(penable),
+		.penable(pen),
 		.pwrite(pwrite),
 		.paddr(paddr),
 		.pwdata(pwdata),
@@ -27,9 +27,9 @@ module apb_tb;
 
 	apb_slave uut_slave(
 		.pclk(pclk),
-		.presetn(presetn),
+		.presetn(prst),
 		.psel(psel),
-		.penable(penable),
+		.penable(pen),
 		.pwrite(pwrite),
 		.paddr(paddr),
 		.pwdata(pwdata),
@@ -41,10 +41,10 @@ module apb_tb;
 
 	initial begin	
 		pclk = 0;
-		presetn = 0;
+		prst = 0;
 		
 		//apply reset
-		#10 presetn = 1;
+		#10 prst = 1;
 
 		//write operation
 		#10;
