@@ -65,7 +65,7 @@ reg psel;
 reg pen;
 reg [31:0] paddr;
 reg  [31:0] pwdata;
-reg [31:0] pwrite;
+reg  pwrite;
 wire [31:0] prdata;
 wire pready;
 wire pslverr;
