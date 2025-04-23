@@ -1,24 +1,41 @@
+
 `include "uvm_macros.svh"
 import uvm_pkg::*;
 
-// Interface
-interface router_if(input bit clk,input logic rst);
-    logic [7:0] d_in;
-  logic  pkt_valid, rd_en_0, rd_en_1, rd_en_2;
-  logic vld_out_0, vld_out_1, vld_out_2, err, busy;
-  logic [7:0] dout_0, dout_1, dout_2;
+interface intf(input logic clk,input logic rst);
+  logic [7:0] d_in; 
+  logic pkt_valid;
+  logic rd_en_0,rd_en_1,rd_en_2;
+  logic vld_out_0,vld_out_1,vld_out_2;
+  logic err;
+  logic busy;
+  logic [7:0] dout_0,dout_1,dout_2;
 endinterface
 
-// Transaction Class
 class transaction extends uvm_sequence_item;
-  rand logic [7:0] d_in;
-  rand logic pkt_valid;
-  logic  rd_en_0=1, rd_en_1=1, rd_en_2=1;
-  logic vld_out_0, vld_out_1, vld_out_2, err, busy;
-  logic [7:0] dout_0, dout_1, dout_2;
+  rand bit [7:0] d_in; 
+    bit pkt_valid;
+    rand bit rd_en_0=1,rd_en_1=1,rd_en_2=1;
+    
+    logic vld_out_0,vld_out_1,vld_out_2; 
+    logic err, busy; 
+  logic [7:0] dout_0,dout_1,dout_2;
+
+  function  new(string obj="transaction");
+    super.new(obj);
+  endfunction
   
- `uvm_object_utils_begin(transaction)
+  rand bit[7:0] header;
+  rand bit[7:0] payload[];
+  logic [7:0] parity=0;
+  
+  constraint header_con{header[1:0] inside {2'b00,2'b01,2'b10};}
+ constraint payload_con{payload.size()==header[7:2] && header[7:0]!=0;}
+  
+       `uvm_object_utils_begin(transaction)
         `uvm_field_int(d_in, UVM_DEFAULT);
+        `uvm_field_int(header, UVM_DEFAULT);
+        `uvm_field_int(parity, UVM_DEFAULT);
         `uvm_field_int(pkt_valid, UVM_DEFAULT);
         `uvm_field_int(rd_en_0, UVM_DEFAULT);
         `uvm_field_int(rd_en_1, UVM_DEFAULT);
@@ -33,215 +50,300 @@ class transaction extends uvm_sequence_item;
         `uvm_field_int(dout_2, UVM_DEFAULT);
     `uvm_object_utils_end
   
-  function new(string name = "router_transaction");
-    super.new(name);
-  endfunction
 endclass
 
-// Sequence
-class router_sequence extends uvm_sequence#(transaction);
-  transaction tx;
-  `uvm_object_utils(router_sequence)
-  
-  function new(string name = "router_sequence");
-    super.new(name);
-  endfunction
+class sequences extends uvm_sequence#(transaction);
+  `uvm_object_utils(sequences)
 
-  virtual task body();
-    repeat (20) begin
-      tx = transaction::type_id::create("tx");
-      start_item(tx);
-      assert(tx.randomize());
-      finish_item(tx);
+  function  new(string obj="sequences");
+    super.new(obj);
+  endfunction
+  
+  task body();
+     transaction t;
+    int payload_len;
+    byte unsigned payload_data[$];
+    byte unsigned parity;
+    
+    repeat(5) begin
+      t=transaction::type_id::create("t");
+      
+      payload_len=$urandom_range(1,5);
+      t.header={payload_len[5:0],$urandom_range(0,2)};
+      parity=t.header;
+      
+      start_item(t);
+      t.d_in=t.header;
+      t.pkt_valid=1;
+      finish_item(t);
+      
+      for(int i=0;i<payload_len;i++) begin
+        start_item(t);
+        t.d_in=$urandom_range(0,50);
+        t.pkt_valid=1;
+        finish_item(t);
+        parity^=t.d_in;
+      end
+      
+      start_item(t);
+      t.d_in=parity;
+      t.pkt_valid=0;
+      finish_item(t);
     end
   endtask
 endclass
 
-// Driver
-class router_driver extends uvm_driver #(transaction);
-  `uvm_component_utils(router_driver)
-  virtual router_if vif;
-  transaction tx;
-    int addr=0;
-    function new(string name="DRIVER", uvm_component parent=null);
-    super.new(name, parent);
+class driver extends uvm_driver#(transaction);
+  `uvm_component_utils(driver)
+    virtual intf vif;
+     int count=0;
+      transaction t;
+  
+  function new(string comp="driver",uvm_component parent=null);
+    super.new(comp,parent);
   endfunction
   
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-    tx=transaction::type_id::create("tx",this);
-    if(!uvm_config_db#(virtual router_if)::get(this, "", "vif", vif))
-      `uvm_error("ROUTER_DRIVER", "Virtual interface not set")
+    
+    if(!uvm_config_db#(virtual intf)::get(this,"","vif",vif))
+      `uvm_fatal("DRV","virtual interface not set")
   endfunction
   
   task run_phase(uvm_phase phase);
-    int count=0;@(negedge vif.clk);
-    vif.pkt_valid=1;
-    forever begin
-      @(negedge vif.clk);
-      wait(vif.busy==0);
-      @(negedge vif.clk);
-      seq_item_port.get_next_item(tx);
-      vif.d_in = tx.d_in;
-      vif.rd_en_0 = tx.rd_en_0;
-      vif.rd_en_1 = tx.rd_en_1;
-      vif.rd_en_2 = tx.rd_en_2;
-      seq_item_port.item_done();
-      count=count+1;
+    super.run_phase(phase);
+    vif.pkt_valid<=0;
+    vif.d_in<=0;
+    vif.rd_en_0<=0;
+    vif.rd_en_1<=0;
+    vif.rd_en_2<=0;
+        forever begin
+            seq_item_port.get_next_item(t);
+          @(negedge vif.clk);
+            vif.pkt_valid = t.pkt_valid;
+            vif.d_in = t.d_in;
+            vif.rd_en_0 = t.rd_en_0;
+            vif.rd_en_1 = t.rd_en_1;
+            vif.rd_en_2 = t.rd_en_2;
+            seq_item_port.item_done();
+          
+            
+            count = count + 1;
     end
   endtask
 endclass
 
-// Monitor
-class router_monitor extends uvm_monitor;
-  `uvm_component_utils(router_monitor)
-  virtual router_if vif;
-  transaction tx;
-  uvm_analysis_port #(transaction) mon_ap;
+class monitor extends uvm_monitor;
+  `uvm_component_utils(monitor)
   
-  function new(string name="MONITOR", uvm_component parent=null);
-    super.new(name, parent);
-    mon_ap = new("mon_ap", this);
+  virtual intf vif;
+  transaction t;
+  uvm_analysis_port #(transaction) wr_port;
+  
+   function  new(string comp="monitor",uvm_component parent);
+    super.new(comp,parent);
+     wr_port=new("wr_port",this);
   endfunction
   
   virtual function void build_phase(uvm_phase phase);
-    super.build_phase(phase);
-    tx=transaction::type_id::create("tx");
-    if(!uvm_config_db#(virtual router_if)::get(this," ", "vif", vif))
-      `uvm_error("ROUTER_MONITOR", "Virtual interface not set")
+        super.build_phase(phase);
+    t=transaction::type_id::create("t",this);
+    if(!uvm_config_db#(virtual intf)::get(this,"","vif",vif))
+      `uvm_fatal("MON","virtual interface not set")
   endfunction
   
   task run_phase(uvm_phase phase);
     forever begin
       @(negedge vif.clk);
-      #1;
-      tx.vld_out_0 = vif.vld_out_0;
-      tx.vld_out_1 = vif.vld_out_1;
-      tx.vld_out_2 = vif.vld_out_2;
-      tx.err = vif.err;
-      tx.busy = vif.busy;
-      tx.dout_0 = vif.dout_0;
-      tx.dout_1 = vif.dout_1;
-      tx.dout_2 = vif.dout_2;
-      `uvm_info("MONITOR",$sformatf("received o/p:dout_0=%0h,dout_1=%0h, dout_2=%0h", tx.dout_0, tx.dout_1, tx.dout_2), UVM_NONE);
-      mon_ap.write(tx);
+      t.d_in=vif.d_in;
+      t.dout_0=vif.dout_0;
+      t.dout_1=vif.dout_1;
+      t.dout_2=vif.dout_2;
+      t.vld_out_0=vif.vld_out_0;
+      t.vld_out_1=vif.vld_out_1;
+      t.vld_out_2=vif.vld_out_2;
+      t.err=vif.err;
+      t.busy=vif.busy;
+      
+      wr_port.write(t);
     end
   endtask
 endclass
 
-// Agent
-class router_agent extends uvm_agent;
-  `uvm_component_utils(router_agent)
-  uvm_sequencer #(transaction) sequencer;
-  router_driver driver;
-  router_monitor monitor;
+
+class scoreboard extends uvm_scoreboard;
+  `uvm_component_utils(scoreboard)
+  int in_stream[$],out_stream[$];
+  bit [7:0] header=0;
+  int parity=0;
+  int prev_d_in=0,prev_d_out=0;
   
-  function new(string name="AGENT", uvm_component parent=null);
-    super.new(name, parent);
+  uvm_analysis_imp#(transaction,scoreboard) wr_fifo;
+  
+  transaction t;
+  
+  function new(string comp="sco",uvm_component parent);
+    super.new(comp,parent);
+    wr_fifo=new("wr_port",this);
   endfunction
+  
+  
+    function void build_phase(uvm_phase phase);
+        super.build_phase(phase);
+      wr_fifo=new("wr_fifo",this);
+       t = transaction::type_id::create("t", this);
+    endfunction
+  
+  virtual function void write(input transaction trans);
+        t = trans;
+        check_data(t);
+    endfunction
+  
+  
+  function void check_data(transaction t);
+    if(t.d_in != prev_d_in) begin
+      in_stream.push_back(t.d_in);
+            prev_d_in = t.d_in;
+      if(in_stream.size() == 2) 
+              header = t.d_in;
+        end
+    
+    if(t.rd_en_0 && t.vld_out_0 && t.dout_0 != 8'b0) 
+      begin
+      out_stream.push_back(t.dout_0);
+      if(out_stream.size() == header[7:2] + 1) 
+              checkParity();
+        end
+    else if(t.rd_en_1 && t.vld_out_1 && t.dout_1 != 8'b0)
+      begin
+      out_stream.push_back(t.dout_1);
+      if(out_stream.size() == header[7:2] + 1) 
+              checkParity();
+        end
+    else if(t.rd_en_2 && t.vld_out_2 && t.dout_2 != 8'b0) 
+      begin
+      out_stream.push_back(t.dout_2);
+      if(out_stream.size() == header[7:2] + 1) 
+              checkParity();
+        end
+    endfunction
+  
+function void checkParity();
+  int parity=0;
+        foreach(out_stream[i]) begin
+            parity ^= out_stream[i];
+        end
+  if(parity != in_stream[$]) begin
+            `uvm_info("SCOREBOARD", "Successfully verified Router 1x3", UVM_LOW);
+    `uvm_info("SCOREBOARD", $sformatf("/* Input:  %0p", in_stream), UVM_LOW);
+    `uvm_info("SCOREBOARD", $sformatf("/* Output: %0p", out_stream), UVM_LOW);
+        end
+        else begin
+          `uvm_error("scoreboard","Received corrupted data");
+        end
+  in_stream.delete();
+  out_stream.delete();
+        
+    endfunction
+  
+endclass
+
+class agent extends uvm_agent;
+  `uvm_component_utils(agent)
+  
+  function new(string comp="agent",uvm_component parent=null);
+    super.new(comp,parent);
+  endfunction
+  
+  uvm_sequencer #(transaction) sqr;
+  driver driv;
+  monitor mon;
   
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-    sequencer = uvm_sequencer #(transaction)::type_id::create("sequencer", this);
-    driver = router_driver::type_id::create("driver", this);
-    monitor = router_monitor::type_id::create("monitor", this);
+    sqr=uvm_sequencer#(transaction)::type_id::create("sqr",this);
+    driv=driver::type_id::create("driv",this);
+    mon=monitor::type_id::create("mon",this);
   endfunction
   
   virtual function void connect_phase(uvm_phase phase);
     super.connect_phase(phase);
-    driver.seq_item_port.connect(sequencer.seq_item_export);
+    driv.seq_item_port.connect(sqr.seq_item_export);
   endfunction
 endclass
 
-//Scoreboard
-class router_scoreboard extends uvm_scoreboard;
-  `uvm_component_utils(router_scoreboard)
-transaction tx;
-  uvm_analysis_imp #(transaction, router_scoreboard) mon_imp;
-  function new(string name="SCOREBOARD", uvm_component parent=null);
-    super.new(name, parent);
-mon_imp=new("mon_ap",this);
+class environment extends uvm_env;
+ `uvm_component_utils(environment)
+  agent agt;
+  scoreboard sco;
+  
+  function  new(string comp="env",uvm_component parent=null);
+    super.new(comp,parent);
   endfunction
   
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-tx=transaction::type_id::create("trans",this);
-  endfunction
-  virtual function void write(input transaction t);
-tx=t;
-`uvm_info("SCOREBOARD",$sformatf("received o/p:dout_0=%0h,dout_1=%0h,dout_2=%0h",tx.dout_0,tx.dout_1,tx.dout_2),UVM_MEDIUM)
-  endfunction
-endclass
-
-// Environment
-class router_env extends uvm_env;
-  `uvm_component_utils(router_env)
-  router_agent agent;
-  router_scoreboard sb;
-  
-  function new(string name="ENVIRONMENT", uvm_component parent=null);
-    super.new(name, parent);
-  endfunction
-  
-  virtual function void build_phase(uvm_phase phase);
-    super.build_phase(phase);
-    agent = router_agent::type_id::create("agent", this);
-    sb = router_scoreboard::type_id::create("sb", this);
+    
+    agt= agent::type_id::create("agt",this);
+    sco=scoreboard::type_id::create("sco",this);
   endfunction
   
   virtual function void connect_phase(uvm_phase phase);
     super.connect_phase(phase);
-    agent.monitor.mon_ap.connect(sb.mon_imp);
+    agt.mon.wr_port.connect(sco.wr_fifo);    
   endfunction
+endclass
+  
+class test_1 extends uvm_test;
+    `uvm_component_utils(test_1)
+  
+      sequences seq;
+  environment env;
+  
+  function  new(string name="seq",uvm_component parent=null);
+    super.new(name,parent);
+    endfunction
+    
+    virtual function void build_phase(uvm_phase phase);
+      super.build_phase(phase);
+      
+        env = environment::type_id::create("env", this);
+        seq = sequences::type_id::create("seq");
+    endfunction  
+
+ task run_phase(uvm_phase phase);
+	$display("-------------TEST RUN PHASE--------------------------------------");
+	phase.raise_objection(this);
+   seq.start(env.agt.sqr);
+   #50;
+   phase.drop_objection(this);
+ endtask
 endclass
 
-// Test
-class router_test extends uvm_test;
-  `uvm_component_utils(router_test)
-  router_env env;
-  router_sequence seq;
-  
-  function new(string name="TEST", uvm_component parent);
-    super.new(name, parent);
-  endfunction
-  
-  virtual function void build_phase(uvm_phase phase);
-    super.build_phase(phase);
-    env = router_env::type_id::create("env", this);
-    seq = router_sequence::type_id::create("seq");
-  endfunction
-  
-  virtual task run_phase(uvm_phase phase);
-//     router_sequence seq = router_sequence::type_id::create("seq");
-    phase.raise_objection(this);
-    seq.start(env.agent.sequencer);
-    #100;
-    phase.drop_objection(this);
-  endtask
-endclass
-                                    
-module tb_top;
-  logic clk=0;
+module tb();
+  logic clk=1;
   logic rst;
-  
-  always #5 clk=~clk;
-  
-  router_if tb_if(clk,rst);
-  
-  router_topmodule dut(tb_if.clk,tb_if.rst,tb_if.d_in,tb_if.pkt_valid,tb_if.rd_en_0,tb_if.rd_en_1,tb_if.rd_en_2,tb_if.vld_out_0,tb_if.vld_out_1,tb_if.vld_out_2,tb_if.err,tb_if.busy,tb_if.dout_0,tb_if.dout_1,tb_if.dout_2);
-  
-  initial begin
-    uvm_config_db#(virtual router_if)::set(null,"uvm_test_top.env.agent*","vif",tb_if);
-    run_test("router_test");
-  end
-  initial begin
+  intf vif_top(clk,rst);
+  router dut(vif_top.clk,vif_top.rst,vif_top.d_in,vif_top.pkt_valid,vif_top.rd_en_0,vif_top.rd_en_1,vif_top.rd_en_2,vif_top.vld_out_0,vif_top.vld_out_1,vif_top.vld_out_2,vif_top.err,vif_top.busy,vif_top.dout_0,vif_top.dout_1,vif_top.dout_2);
+always #10 clk=~clk;
+
+initial begin
+  uvm_config_db #(virtual intf)::set(null,"uvm_test_top.env.agt*","vif",vif_top);
+  run_test("test_1");
+end
+  initial begin 
     rst=0;
-    #10 rst=1;
+    repeat(2) @(posedge clk);
+    rst=1;
   end
+initial begin
+  $dumpfile("dump.vcd");
+  $dumpvars(0, tb); 
+  $dumpvars(0, dut);
+  $dumpvars(0, vif_top);
+end
   initial begin
-    $dumpfile("dump.vcd");
-    $dumpvars;
-    #1000;
-    $finish;
+    #2000;
+    $finish();
   end
 endmodule
