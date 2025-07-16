@@ -1,0 +1,22 @@
+.body{
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.container{
+    position: relative;
+    width: 360px;
+    height: 640px;
+    margin-top: 150px;
+    background: rgba(0,0,0,0);
+    transform:rotate(-30deg) skew(25deg) scale(.8);
+}
+.container{
+    position: absolute;
+    width: 100%;
+    transition: .5s;
+}

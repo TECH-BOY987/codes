@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style type="text/css">
+        h1{
+            color: orange;
+        }
+        div{
+            display:block;
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            left: calc(50%,-1cm);
+            border-radius: 1.3cm;
+            transform-origin: 1.3cm 2cm;
+            animation: rotate;
+            animation-iteration-count: infinite;
+            animation-duration: 2s;
+
+        }
+        @keyframes rotate {
+            0%{
+                transform:rotate(0deg);
+            }
+            100%{ transform:rotate(360deg);}
+        }
+        *{
+            font-size: 30px;
+        }
+        q::before{
+            content:"<<";
+            color: blue;
+
+        }
+        q::after{
+            content: ">>";
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <center> 
+        <h1>Welcome to Simplilearn</h1>
+        <div class="a1"></div>
+          <div class="a2"></div>
+            <div class="a3"></div>
+              <div class="a4"></div>
+    </center>
+    <q>Welcome</q> To <q>Simplilearn</q>
+</body>
+</html>
